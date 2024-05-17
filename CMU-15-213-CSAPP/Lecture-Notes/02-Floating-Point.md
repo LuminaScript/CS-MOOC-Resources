@@ -90,14 +90,3 @@
 - **Visualization: Floating Point Encodings**
   
   <img src="../../resources/csapp-03-02.png" alt="csapp-03-02" width="520"/>
-
-- **Floating Point Operation:**
-  1. Basic Idea:
-     - First compute exact result 
-     - Make it fit into desired precision
-     - Rounding:
-       - Rounding Modes
-       - Round-to-even (last bit is 0)
-     - Multiplication
-       - Exact Result
-       - Fixing
