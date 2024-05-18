@@ -186,8 +186,8 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  for (int i = 0; i < 32; i++)
-  return 2;
+  int bit_mask = 0x55555555;
+  return !((x | bit_mask) ^ 0xFFFFFFFF);
 }
 /* 
  * negate - return -x 
@@ -196,10 +196,9 @@ int allOddBits(int x) {
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) {
-  return 2;
+int negate(int x) { // Mechanism Unclear
+  return ~x + 1;
 }
-//3
 /* 
  * isAsciiDigit - return 1 if 0x30 <= x <= 0x39 (ASCII codes for characters '0' to '9')
  *   Example: isAsciiDigit(0x35) = 1.
@@ -210,7 +209,9 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int upperCheck = !(x >> 4 ^ 0x3);  
+  int lowerCheck = (x & 0xF) + (~0xA + 1); 
+  return upperCheck & (lowerCheck >> 31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -220,7 +221,12 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int mask = !!x; // mask is 1 if non-zero, 0 if zero
+  
+  // mask = 0xFFFFFFFF if x is non-zero 
+  // mask = 0x00000000 if x is zero
+  mask = ~mask + 1; 
+  return (mask & y) | (~mask & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -230,7 +236,22 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+    // Compute the sign bits of x and y
+    int signX = x >> 31 & 1;
+    int signY = y >> 31 & 1;
+
+    // Compute the difference between y and x
+    int diff = y + ~x + 1; // This is equivalent to y - x
+
+    // Compute the sign bit of the difference
+    int signDiff = diff >> 31 & 1;
+
+    // Determine if x and y have different signs
+    int differentSigns = signX ^ signY;
+
+    // If x and y have different signs, return 1 if x is negative
+    // If x and y have the same sign, return 1 if diff is non-negative
+    return (differentSigns & signX) | (!differentSigns & !signDiff);
 }
 //4
 /* 
@@ -242,6 +263,9 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
+  // if x == 0 return 1
+  // if x != 0 return 0
+  // x ^ 0 == 
   return 2;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
