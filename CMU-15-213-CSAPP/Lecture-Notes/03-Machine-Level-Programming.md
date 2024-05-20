@@ -1,32 +1,28 @@
 ## I.  Basic
 
-### Assembly Basics: Register, operands, move
+### i. Assembly Basics: Register, operands, move
 
 - **<u>Levels of Abstraction</u>**
 
   - **C code**
 
-  - **Assembly programmer**
-
-    <img src="../../resources/csapp-3-01.png" alt="csapp-3-01" width="400" align="left"/>
+  - **Assembly programmer**  
+    <img src="../../resources/csapp-3-01.png" alt="csapp-3-01" width="400" align="left"/>  
+    <br clear="left"/>
 
   - **Computer designer**
-
     - caches, clock freq, layout, ...
-
-      
 
 - **<u>Definitions</u>**
 
   - **Architecture** (ISA, Instruction Set Architecture)
-
     - Machine Code: The byte-level programs that a processor executes
-    - Assembly Code: A text representation of machine code 
+    - Assembly Code: A text representation of machine code
     - Example: Intel (x86, x86-64), ARM
 
   - **Microarchitecture**: Implementation of Architecture
-
     - Examples: cache sizes, core frequency
+
 
       
 
@@ -38,12 +34,10 @@
 
 
 
-- **<u>x86-64 Integer Registers</u>**
-
-  `%esp: lower 4 bytes`
+- **<u>x86-64 Integer Registers</u>**  `%esp: lower 4 bytes`
 
   <img src="../../resources/csapp-3-02.png" alt="csapp-3-02" width="400" align="left"/>
-
+  <br clear="left"/>
 
 
 - **<u>Assembly Characteristics: Operations</u>**
@@ -62,6 +56,7 @@
       - `movq` operand combination (cannot do memory-memory transfer with a signle instruction)
 
         <img src="../../resources/csapp-3-03.png" alt="csapp-3-03" width="400" align="left"/>
+        <br clear="left"/>
 
         
 
@@ -121,7 +116,10 @@
     | **(%rdx, %rcx, 4)**  | 0xf000 + 4 * 0x0100 | 0xf400  |
     | **0x80 (, %rdx, 2)** | 2 * 0xf000 + 0x80   | 0x1e080 |
 
-### Aritmetic & Logical Operations
+
+</br>
+### ii. Arithmetic & Logical Operations
+
 
 - **<u>Address Computation Instruction</u>**
 
@@ -140,40 +138,28 @@
         /* 
         - assembly - 
         leaq (%rdi, %rdi, 2), %rax # t = x + 2 * x
-        salq $2, %rax							 # return t << 2
+        salq $2, %rax # return t << 2
         */
         ```
 
   - **Arithmetic Operations**
-
-    - <u>Two Operands</u>
-      - `addq Src, Dest`
-        - `Dest = Dest + Src`
-      - `subq Src, Dest`
-        - `Dest = Dest - Src`
-      - `imulq Src, Dest`
-        - `Dest = Dest * Src`
-      - `salq Src, Dest`
-        - `Dest = Dest << Src`
-      - `sarq Src, Dest`
-        - `Dest = Dest >> Src`
-      - `shrq Src, Dest`
-        - `Dest = Dest >> Src`
-      - `xorq Src, Dest`
-        - `Dest = Dest ^ Src`
-      - `andq Src, Dest`
-        - `Dest = Dest & Src`
-      - `orq Src, Dest`
-      - `Dest = Dest | Src`
-    - <u>One Operand</u>
-      - `incq Dest`
-        - `Dest = Dest + 1`
-      - `decq Dest`
-        - `Dest = Dest - 1`
-      - `negq Dest`
-        - `Dest = -Dest`
-      - `notq Dest`
-        - `Dest = ~Dest`
+  
+    - **<u>Two Operands</u>**
+      - `addq Src, Dest`: `Dest = Dest + Src`
+      - `subq Src, Dest`: `Dest = Dest - Src`
+      - `imulq Src, Dest`: `Dest = Dest * Src`
+      - `salq Src, Dest`: `Dest = Dest << Src`
+      - `sarq Src, Dest`: `Dest = Dest >> Src`
+      - `shrq Src, Dest`: `Dest = Dest >> Src`
+      - `xorq Src, Dest`: `Dest = Dest ^ Src`
+      - `andq Src, Dest`: `Dest = Dest & Src`
+      - `orq Src, Dest`: `Dest = Dest | Src`
+  
+    - **<u>One Operand</u>**
+      - `incq Dest`: `Dest = Dest + 1`
+      - `decq Dest`: `Dest = Dest - 1`
+      - `negq Dest`: `Dest = -Dest`
+    - `notq Dest`: `Dest = ~Dest`
 
   - **Arithmetic Expression Example**
 
@@ -203,10 +189,10 @@
           imulq %rcx, %rax         # rval = t2 * t5
           ret
       ```
+    
+</br>
 
-      
-
-### C, assembly, machine code
+### iii. C, assembly, machine code
 
 - **Turning C into Object Code**
 
