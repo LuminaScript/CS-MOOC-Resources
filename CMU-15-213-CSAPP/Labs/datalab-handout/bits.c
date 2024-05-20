@@ -186,8 +186,8 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  for (int i = 0; i < 32; i++)
-  return 2;
+  int bit_mask = 0x55555555;
+  return !((x | bit_mask) ^ 0xFFFFFFFF);
 }
 /* 
  * negate - return -x 
@@ -196,10 +196,9 @@ int allOddBits(int x) {
  *   Max ops: 5
  *   Rating: 2
  */
-int negate(int x) {
-  return 2;
+int negate(int x) { // Mechanism Unclear
+  return ~x + 1;
 }
-//3
 /* 
  * isAsciiDigit - return 1 if 0x30 <= x <= 0x39 (ASCII codes for characters '0' to '9')
  *   Example: isAsciiDigit(0x35) = 1.
@@ -210,7 +209,9 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int upperCheck = !(x >> 4 ^ 0x3);  
+  int lowerCheck = (x & 0xF) + (~0xA + 1); 
+  return upperCheck & (lowerCheck >> 31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -220,7 +221,12 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int mask = !!x; // mask is 1 if non-zero, 0 if zero
+  
+  // mask = 0xFFFFFFFF if x is non-zero 
+  // mask = 0x00000000 if x is zero
+  mask = ~mask + 1; 
+  return (mask & y) | (~mask & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -230,7 +236,22 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+    // Compute the sign bits of x and y
+    int signX = x >> 31 & 1;
+    int signY = y >> 31 & 1;
+
+    // Compute the difference between y and x
+    int diff = y + ~x + 1; // This is equivalent to y - x
+
+    // Compute the sign bit of the difference
+    int signDiff = diff >> 31 & 1;
+
+    // Determine if x and y have different signs
+    int differentSigns = signX ^ signY;
+
+    // If x and y have different signs, return 1 if x is negative
+    // If x and y have the same sign, return 1 if diff is non-negative
+    return (differentSigns & signX) | (!differentSigns & !signDiff);
 }
 //4
 /* 
@@ -242,24 +263,65 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  // if x = 0, return 1
+  // if x = 0
+  int neg_x = ~x + 1;
+  int combined = neg_x | x;
+  int signBit = combined >> 31 & 1;
+  return signBit ^ 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
  *  Examples: howManyBits(12) = 5
  *            howManyBits(298) = 10
  *            howManyBits(-5) = 4
- *            howManyBits(0)  = 1
- *            howManyBits(-1) = 1
+ *            howManyBits(0)  = 1 0x0
+ *            howManyBits(-1) = 1 -
  *            howManyBits(0x80000000) = 32
  *  Legal ops: ! ~ & ^ | + << >>
  *  Max ops: 90
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+       /*
+     * We first bit invert all negative numbers and
+     * use binary search to find out the log2(n).
+     * Then we add 1 to the final result since we need
+     * the MSB to represent the sign.
+     * Note: finding the following things are equal:
+     * 1. find the most significant bit of 1 for positive numbers
+     * 2. find the most significant bit of 0 for negative numbers
+     */
+    
+    /* I hate this, but I have to avoid parse error */
+    int sign, bit0, bit1, bit2, bit4, bit8, bit16;
+
+    sign = x >> 31;
+    
+    /* Bit invert x as needed */
+    x = (sign & ~x) | (~sign & x);
+    
+    /* Binary Search on bit level */
+    bit16 = !!(x >> 16) << 4;
+    x = x >> bit16;
+    
+    bit8 = !!(x >> 8) << 3;
+    x = x >> bit8;
+    
+    bit4 = !!(x >> 4) << 2;
+    x = x >> bit4;
+    
+    bit2 = !!(x >> 2) << 1;
+    x = x >> bit2;
+    
+    bit1 = !!(x >> 1);
+    x = x >> bit1;
+    
+    bit0 = x;
+
+    return bit16 + bit8 + bit4 + bit2 + bit1 + bit0 + 1;
 }
-//float
+
 /* 
  * floatScale2 - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
@@ -272,7 +334,27 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned sign = uf & 0x80000000;
+  unsigned exp = (uf >> 23) & 0xFF;
+  unsigned frac = uf & 0x7FFFFF;
+
+  if (exp == 0xFF) {
+    return uf;
+  }
+
+  if (exp == 0) { // denormalized
+    frac <<= 1;
+    if (frac & 0x80000000) {
+      frac &= 0x7FFFFF;
+      exp = 1;
+    }
+  } else {
+    exp += 1;
+    if (exp == 0xFF) {
+      frac = 0;
+    }
+  }
+  return sign | (exp << 23) | frac;
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -287,8 +369,33 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+    unsigned sign = uf >> 31;
+    int exp = ((uf >> 23) & 0xFF) - 127; // Get the exponent and adjust by the bias
+    unsigned frac = (uf & 0x7FFFFF) | 0x800000; // Add the implicit leading 1 for the mantissa
+
+    // Handle out of range cases
+    if (exp >= 31) {
+        return 0x80000000; // Return out of range indicator
+    }
+    if (exp < 0) {
+        return 0; // Numbers less than 1 truncate to 0
+    }
+
+    // Adjust the mantissa according to the exponent
+    if (exp > 23) {
+        frac <<= (exp - 23);
+    } else {
+        frac >>= (23 - exp);
+    }
+
+    // Apply the sign
+    if (sign) {
+        frac = -frac;
+    }
+
+    return frac;
 }
+
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
  *   (2.0 raised to the power x) for any 32-bit integer x.
@@ -303,5 +410,12 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int exp = x + 127;
+  if (exp <= 0) {
+    return 0;
+  }
+  if (exp >= 255) {
+    return 0x7F800000;
+  }
+  return exp << 23;
 }
