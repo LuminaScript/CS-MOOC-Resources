@@ -1,6 +1,6 @@
-## I.  Basic
+## 1.  Basic
 
-### i. Assembly Basics: Register, operands, move
+### 1.1. Assembly Basics: Register, operands, move
 
 - **<u>Levels of Abstraction</u>**
 
@@ -24,7 +24,7 @@
     - Examples: cache sizes, core frequency
 
 
-      
+​      
 
 - **<u>Assembly Characteristics: Data Types</u>**
 
@@ -119,7 +119,7 @@
 
 </br>
 
-### ii. Arithmetic & Logical Operations
+### 1.2. Arithmetic & Logical Operations
 
 
 - **<u>Address Computation Instruction</u>**
@@ -191,9 +191,10 @@
           ret
       ```
     
+
 </br>
 
-### iii. C, assembly, machine code
+### 1.3. C, assembly, machine code
 
 - **Turning C into Object Code**
 
@@ -256,4 +257,291 @@
 
       
 
+
+## 2. Controls
+
+### 2.1 Control: Condition Codes
+
+- **Processor State (x86-64)** - Runtime Environment
+  - <u>Temporary Data</u> 
+    - **%rax**: General-purpose register used for temporary data storage.
+  - <u>Location of Runtime Stack</u> 
+    - **%rsp**: Stack pointer register that points to the current location in the runtime stack. 
+  - <u>Location of Current Code Control Point</u> 
+    - **%rip**: Instruction pointer register that holds the address of the next instruction to be executed. 
+  - <u>Status of Recent Tests</u> 
+    - **CF**: Carry Flag 
+    - **ZF**: Zero Flag 
+    - **SF**: Sign Flag 
+    - **OF**: Overflow Flag
+
+
+
+- **Condition Codes**
+
+  - <u>Implicit Set: Arithmetic Calculation</u> (Not set by `leaq `instruction): 
+
+    - Example ` t = a + b`: 
+
+      - **CF**: Carry Flag (for unsigned) `if carry/borrow out from MSB`
+
+        - Carry:
+
+          ```lua
+            1xxxxxxxxxxxxxxx...
+          + 1xxxxxxxxxxxxxxx...
+          --------------------
+           1xxxxxxxxxxxxxxx...
+          ```
+
+        - Borrow:
+
+          ```lua
+            0xxxxxxxxxxxxxxx...
+          - 1xxxxxxxxxxxxxxx...
+          --------------------
+           1xxxxxxxxxxxxxxx...
+          ```
+
+      - **ZF**: Zero Flag `if t == 0`
+
+        ```lua
+        000000000000...00000000000
+        ```
+
+      - **SF**: Sign Flag (for signed) `if t < 0`
+
+        ```lua
+          yxxxxxxxxxxxxxxx...
+        + yxxxxxxxxxxxxxxx...
+        --------------------
+        	1xxxxxxxxxxxxxxx...
+        ```
+
+      - **OF**: Overflow Flag (for signed) `if two's-complement (signed) overflow` `(a > 0 && b > 0 && t < 0) || (a < 0 && b < 0 && t >= 0)`
+
+        ```lua
+          yxxxxxxxxxxxxxxx...
+        + yxxxxxxxxxxxxxxx...
+        --------------------
+        	zxxxxxxxxxxxxxxx...
+        (z = ~y)
+        ```
+
+  - <u>Explicit Setting: Compare</u>
+
+    > The `cmpq` instruction sets condition codes based on the comparison of two operands. The above instruction is like computing `a - b` without setting the destination. 
+
+    - **CF (Carry Flag):** Set if there is a carry/borrow out from the most significant bit (used for unsigned comparisons). 
+    - **ZF (Zero Flag):** Set if `a == b`. 
+    - **SF (Sign Flag):** Set if `(a - b) < 0` (interpreted as signed). 
+    - **OF (Overflow Flag):** Set if there is a two's-complement (signed) overflow.  
+      -  Conditions:    
+        - `(a > 0 && b < 0 && (a - b) < 0)`    
+        - `(a < 0 && b > 0 && (a - b) > 0)` 
+
+  - <u>Explicit Setting: Test</u>
+
+    > The `testq` instruction performs a bitwise AND between two operands and sets condition codes based on the result. The above instruction is like computing `a & b` without setting the destination. Very often used as  `testq  %rax,%`
+
+    - **ZF (Zero Flag):** Set when `a & b == 0`. 
+    - **SF (Sign Flag):** Set when `a & b < 0`. 
+
+- **Reading Condition Codes**
+
+  - <u>SetX Instruction</u> (Set single byte based on combination of condition codes):
+
+  ![csapp-4-01.png](../../resources/csapp-4-01.png)
+
+  - <u>Example</u>:
+
+    ```c
+    int gt (long x, long y) 
+    {
+      return x > y;
+    }
+    /*
+    Assembly:
+    cmpq %rsi, %rdi 			# Compare x : y
+    setg %al 							# Set when >
+    movzbl %al, %eax ret  # Zero rest of %rax
+    */
+    ```
+
     
+
+### 2.2 Conditional Branches
+
+- **jX Instruction**:
+
+  ![csapp-4-02.png](../../resources/csapp-4-02.png)
+
+- **Example** 1:
+
+  ```c
+  long absdiff(long x, long y) {
+      long result;
+      if (x > y)
+          result = x - y;  // cmpq %rsi, %rdi   # x : y
+                           // jle .L4
+                           // movq %rdi, %rax
+                           // subq %rsi, %rax
+                           // ret
+      else
+          result = y - x;  // .L4:              # x <= y
+                           // movq %rsi, %rax
+                           // subq %rdi, %rax
+                           // ret
+      return result;
+  }
+  ```
+
+- Example 2:
+
+  ![csapp-4-03.png](../../resources/csapp-4-03.png)
+
+### 2.3 Loops
+
+- **While Loop**
+
+  ```c
+  while (condition) {
+      // loop body
+  }
+  ```
+
+  ```assembly
+  start_while:
+      # Evaluate condition
+      # Example: cmpq $0, %rax
+      je end_while   # Jump to end_while if condition is false
+  
+      # Loop body
+      # Example: addq $1, %rbx
+  
+      jmp start_while  # Jump back to start_while to re-evaluate condition
+  
+  end_while:
+  ```
+
+- **Do-While Loop**
+
+  ```c
+  do {
+      // loop body
+  } while (condition);
+  ```
+
+  ```assembly
+  start_do_while:
+      # Loop body
+      # Example: addq $1, %rbx
+  
+      # Evaluate condition
+      # Example: cmpq $0, %rax
+      jne start_do_while  # Jump back to start_do_while if condition is true
+  ```
+
+- **For Loop**
+
+  ```c
+  for (initialization; condition; increment) {
+      // loop body
+  }
+  ```
+
+  ```assembly
+      # Initialization
+      # Example: movq $0, %rbx
+  
+  start_for:
+      # Evaluate condition
+      # Example: cmpq $10, %rbx
+      je end_for  # Jump to end_for if condition is false
+  
+      # Loop body
+      # Example: addq $1, %rax
+  
+      # Increment
+      # Example: incq %rbx
+  
+      jmp start_for  # Jump back to start_for to re-evaluate condition
+  
+  end_for:
+  ```
+
+### 2.4 Switch Statements
+
+```c
+long my_switch(long x, long y, long z) {
+    long w = 1;
+    switch(x) {
+        case 1:
+            w = y * z;
+            break;
+        case 2:
+            w = y / z;
+            // Fall through to case 3
+        case 3:
+            w += z;
+            break;
+        case 5:
+        case 6:
+            w -= z;
+            break;
+        default:
+            w = 2;
+            break;
+    }
+    return w;
+}
+```
+
+```assembly
+.section .text
+.globl my_switch
+
+my_switch:
+    movq    %rdx, %rcx      # Move z into rcx
+    cmpq    $6, %rdi        # Compare x with 6
+    ja      .L8             # If x > 6, jump to default case
+    jmp     *.L4(,%rdi,8)   # Indirect jump using jump table
+
+.section .rodata
+.align 8
+.L4:
+    .quad   .L8             # x = 0, default case
+    .quad   .L3             # x = 1, case 1
+    .quad   .L5             # x = 2, case 2
+    .quad   .L9             # x = 3, case 3
+    .quad   .L8             # x = 4, default case
+    .quad   .L7             # x = 5, case 5
+    .quad   .L7             # x = 6, case 6
+
+.L3:
+    imulq   %rcx, %rsi      # w = y * z
+    jmp     .L10
+
+.L5:
+    cqto                    # Sign extend rax into rdx
+    idivq   %rcx            # w = y / z
+    # Fall through to case 3
+.L9:
+    addq    %rcx, %rsi      # w += z
+    jmp     .L10
+
+.L7:
+    subq    %rcx, %rsi      # w -= z
+    jmp     .L10
+
+.L8:
+    movq    $2, %rsi        # w = 2
+    jmp     .L10
+
+.L10:
+    movq    $1, %rax        # Set return value to 1
+    ret
+```
+
+
+
