@@ -44,7 +44,7 @@
 
   - **Transfer data** between memory and register
 
-    - **Moving Data:  **
+    - **Moving Data:**
 
       - `movq Source, Dest`
 
@@ -545,3 +545,154 @@ my_switch:
 
 
 
+## 3. Procedures
+
+### 3.1 Stack Structure (x86-64)
+#### Region of memory managed
+```bash
+-----
+Stack ---> |__| <- stack top [high memory]
+-----      |__|
+-----      |__| <- stack pointer: %rsp (stack botttom) [low memory]
+Code
+-----
+```
+- Region of memory managed with stack discipline
+- Grows toward lower addresses
+Register ```%rsp``` contains lowest stack address
+  - address of “top” element
+
+#### Assembly Operations
+- `pushq Src`:
+  - fetch operand at src
+  - decrement `%rsp` by 8
+  - write operand at address given by `%rsp`
+- `popq Dest`
+  - Read value at address given by `%rsp`
+  - Increment `%rsp` by 8
+  - Store value at Dest (usually a register)
+  
+### 3.2 Calling Convention
+#### Passing Control
+- Use stack to support procedure call and return
+    1. **Procedure call: `call label`**
+        - Push return address on stack
+        - Jump to label
+    2. **Return address:**
+        - Address of the next instruction right after call
+        - Example from disassembly
+    3. **Procedure return: `ret`**
+        - Pop address from stack
+        - Jump to address
+#### Passing Data
+- Procedure Data Flow
+    - Register 
+        - First 6th arguments
+            ```bash
+            %rdi # 1st arg   
+            %rsi # 2nd arg
+            %rdx # 3rd arg      
+            %rcx # 4th arg  
+            %r8  # 5th arg
+            %r9  # 6th arg   
+            ```
+    - Stack
+        - 7th to nth arguments
+#### Managing local data (Recursion)
+Stack allocated in **Frames** (state for single procedure instantiation)
+- **Frame pointer & Stack pointer**
+    ```bash
+                            ______________
+                            previous frame
+    Frame Pointer: %rbp ->  ______________
+                            frame for proc
+    Stack Pointer: %rsp ->  ______________
+    ```
+- **Register Saving Convention**
+    - When procedure `yoo` calls `who`:
+        - `yoo` := caller
+        - `who` := callee
+    - Conventions:
+        - “Caller Saved” (aka “Call-Clobbered”)
+            - Caller saves temporary values in its frame before the call
+        - “Callee Saved” (aka “Call-Preserved”)
+            - Callee saves temporary values in its frame before using
+            - Callee restores them before returning to caller
+
+* **x86-64 Linux Register Usage**
+    ```bash
+    # Return Value:
+    %rax
+
+    # Arguments :
+    %rdi # 1st arg   
+    %rsi # 2nd arg
+    %rdx # 3rd arg      
+    %rcx # 4th arg  
+    %r8  # 5th arg
+    %r9  # 6th arg   
+
+    # Caller-saved temporaries :
+    %r10 
+    %r11
+    
+    ## Callee-saved tempories : (must save & restore)
+    %rbx
+    %r12
+    %r13
+    %r14 
+    %rbp # (maybe used as frame pointer, can mix & match)
+    
+    # Special
+    %rbp
+    %rsp # special form of callee save (restored to originla value upon exit from procedure)
+
+- **Recursion Example**
+    - **C Code**
+        ```C
+        long pcount_r(unsigned long x) {
+            if (x == 0)
+                return 0;
+            else
+                return (x & 1) + pcount_r(x >> 1);
+        }
+
+        ```
+    - **Assembly Code**
+      ```Assembly
+      pcount_r:
+        movl    $0, %eax          ; Initialize the return value (%eax) to 0
+        testq   %rdi, %rdi        ; Test if the argument (%rdi) is 0
+        je      .L6               ; If %rdi is 0, jump to label .L6 (base case)
+
+        pushq   %rbx              ; Save %rbx on the stack
+        movq    %rdi, %rbx        ; Move the argument (%rdi) to %rbx
+        andl    $1, %ebx          ; Compute %rbx = %rbx & 1 (least significant bit)
+        shrq    %rdi              ; Shift the argument (%rdi) right by 1 bit
+        call    pcount_r          ; Recursive call with the shifted argument
+        addq    %rbx, %rax        ; Add the least significant bit to the return value
+        popq    %rbx              ; Restore %rbx from the stack
+      .L6:
+        rep; ret                  ; Return from the function
+
+      ```
+      
+  - **Breakdown of the Assembly Code**
+      - Initialization:
+        - `movl $0, %eax`: Sets the return value register `%eax` to 0.
+        - `testq %rdi, %rdi`: Tests if the input argument `%rdi` (the value of `x`) is 0.
+        - `je .L6`: If `%rdi` is 0, it jumps to label `.L6` to return 0.
+    - Recursive Case:
+        - `pushq %rbx`: Saves the current value of `%rbx` on the stack.
+        - `movq %rdi, %rbx`: Copies the input argument `%rdi` to `%rbx`.
+        - `andl $1, %ebx`: Computes the least significant bit of `%rdi` and stores it in `%rbx`.
+        - `shrq %rdi`: Shifts the value in `%rdi` to the right by one bit.
+        - `call pcount_r`: Makes a recursive call to `pcount_r` with the shifted value.
+        - `addq %rbx, %rax`: Adds the least significant bit stored in `%rbx` to the return value `%rax`.
+        - `popq %rbx`: Restores the previous value of `%rbx` from the stack.
+    - Base Case:
+        - `.L6:`: The label where the function returns from.
+        - `rep; ret`: Returns from the function.
+    - Register Usage
+        - `%rdi`: Argument (`x`).
+        - `%rax`: Return value.
